@@ -1,0 +1,124 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulatore Villa Mandetta</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #fefefe; }
+    h1 { font-size: 1.5em; margin-bottom: 10px; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, button { width: 100%; padding: 10px; font-size: 1em; margin-top: 5px; }
+    button { background: #0077cc; color: white; border: none; margin-top: 20px; }
+    .result { margin-top: 25px; background: #f4f4f4; padding: 15px; border-left: 5px solid #0077cc; }
+    .highlight { color: #007700; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Simulatore Villa Mandetta</h1>
+
+  <label>Data Check-in:</label>
+  <input type="date" id="checkin">
+
+  <label>Data Check-out:</label>
+  <input type="date" id="checkout" onchange="calcolaNotti()">
+
+  <label>Numero Notti:</label>
+  <input type="number" id="notti" disabled>
+
+  <label>Numero Persone:</label>
+  <input type="number" id="persone" min="1" max="4">
+
+  <button onclick="calcolaPrezzi()">Calcola</button>
+
+  <div class="result" id="risultato" style="display:none;"></div>
+
+<script>
+  const prezzi2024 = {1: 80, 2: 125, 3: 155, 4: 185};
+  const prezzi2025 = {1: 90, 2: 160, 3: 195, 4: 230};
+  const diretti2024 = {1: 68, 2: 106, 3: 132, 4: 157};
+  const diretti2025 = {1: 76, 2: 136, 3: 166, 4: 196};
+  const prezziVecchi = {1: 90, 2: 160, 3: 195, 4: 230};
+
+  function calcolaNotti() {
+    const checkin = new Date(document.getElementById("checkin").value);
+    const checkout = new Date(document.getElementById("checkout").value);
+    const diffTime = checkout - checkin;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    document.getElementById("notti").value = diffDays > 0 ? diffDays : 0;
+  }
+
+  function calcolaPrezzi() {
+    const checkin = new Date(document.getElementById("checkin").value);
+    const checkout = new Date(document.getElementById("checkout").value);
+    const notti = parseInt(document.getElementById("notti").value);
+    const persone = parseInt(document.getElementById("persone").value);
+    if (!checkin || !checkout || !notti || !persone || notti <= 0) return;
+
+    let includeWeekend = false;
+    let giornoCheckin = checkin.getDay();
+    let sconto = 0;
+
+    if (notti >= 5) sconto = 0.05;
+    else if (giornoCheckin === 0 || giornoCheckin === 1) sconto = 0.10;
+
+    let totaleBooking = 0;
+    let totaleDiretto = 0;
+    let totaleVecchio = 0;
+
+    for (let i = 0; i < notti; i++) {
+      let giorno = new Date(checkin);
+      giorno.setDate(checkin.getDate() + i);
+      let day = giorno.getDay();
+      let tipoTariffa = (day === 5 || day === 6) ? '2025' : '2024';
+      if (day === 5 || day === 6) includeWeekend = true;
+
+      let prezzoBooking = (tipoTariffa === '2025') ? prezzi2025[persone] : prezzi2024[persone];
+      let prezzoDiretto = (tipoTariffa === '2025') ? diretti2025[persone] : diretti2024[persone];
+      let prezzoVecchio = prezziVecchi[persone];
+
+      totaleBooking += prezzoBooking;
+      totaleDiretto += prezzoDiretto;
+      totaleVecchio += prezzoVecchio;
+    }
+
+    if (includeWeekend && notti < 2) {
+      document.getElementById("risultato").style.display = "block";
+      document.getElementById("risultato").innerHTML = "<strong style='color:red;'>⚠️ Minimo 2 notti richieste se c'è venerdì o sabato.</strong>";
+      return;
+    }
+
+    let output = `<strong>Totale Booking:</strong> €${totaleBooking}<br>`;
+    let totaleScontato = totaleBooking;
+    if (sconto > 0) {
+      let scontoTotale = Math.round(totaleBooking * sconto);
+      totaleScontato = totaleBooking - scontoTotale;
+      output += `<strong>Sconto Booking (${sconto * 100}%):</strong> -€${scontoTotale}<br>`;
+      output += `<strong>Totale Scontato Booking:</strong> €${totaleScontato}<br>`;
+    }
+
+    output += `<strong class='highlight'>Totale Diretto:</strong> €${totaleDiretto}<br>`;
+    output += ``;
+    let totaleEffettivo = sconto > 0 ? totaleScontato : totaleBooking;
+    
+
+    document.getElementById("risultato").style.display = "block";
+    
+    output += `<br><strong>📅 Dettaglio giornaliero:</strong><br>`;
+    for (let i = 0; i < notti; i++) {
+      let giorno = new Date(checkin);
+      giorno.setDate(checkin.getDate() + i);
+      let day = giorno.getDay();
+      let tipoTariffa = (day === 5 || day === 6) ? '2025' : '2024';
+      let dataStr = giorno.toISOString().split('T')[0];
+      let prezzoBooking = (tipoTariffa === '2025') ? prezzi2025[persone] : prezzi2024[persone];
+      let prezzoDiretto = (tipoTariffa === '2025') ? diretti2025[persone] : diretti2024[persone];
+      output += `🗓️ ${dataStr}: Booking €${prezzoBooking} / Diretto €${prezzoDiretto}<br>`;
+    }
+    document.getElementById("risultato").innerHTML = output;
+    
+  }
+</script>
+</body>
+</html>
